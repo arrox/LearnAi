@@ -16,25 +16,39 @@ Los fundamentos y referencias están en la página `/method` de la app.
 ## Arquitectura
 
 - **Next.js 16 (App Router) + TypeScript + Tailwind 4.**
-- **IA:** `@anthropic-ai/sdk`, modelo `claude-opus-5-5` por defecto, con *structured outputs* (esquemas Zod en `src/lib/schemas.ts`), caché del system prompt y *fallback* del lado del servidor ante rechazos.
+- **IA, dos backends** (`src/lib/ai.ts`, elegido con `AI_PROVIDER`):
+  - `claude-code` (por defecto): **Claude Agent SDK**, que usa el Claude Code instalado en tu máquina y su sesión (`claude auth login`). No necesita API key. Cada llamada levanta un proceso de Claude Code sin herramientas, sin configuración ni CLAUDE.md, y sin guardar la sesión.
+  - `api`: `@anthropic-ai/sdk` con `ANTHROPIC_API_KEY` (modelo `claude-opus-5-5`, caché del system prompt y *fallback* ante rechazos). Es la opción para publicar la app.
+  - En ambos casos las respuestas son JSON validado contra los esquemas Zod de `src/lib/schemas.ts`.
 - **Rutas API** (`src/app/api/*`): `assessment`, `lesson`, `tutor`, `grade`. La API key vive solo en el servidor. El test se vuelve a puntuar en el servidor: el cliente no decide su propio nivel.
 - **Motor adaptativo** (`src/lib/cat.ts`): estimación EAP bajo Rasch, selección por máxima información con balance de habilidades.
 - **Voz:** Web Speech API del navegador (síntesis para Lexi; reconocimiento en Chrome/Edge/Safari).
 - **Datos:** perfil y progreso en `localStorage` (sin cuentas por ahora).
 
-## Correr en local
+## Ambiente de desarrollo local
+
+Requisitos: Node 20+ y [Claude Code](https://code.claude.com) con sesión iniciada.
 
 ```bash
-cp .env.example .env.local   # y pega tu ANTHROPIC_API_KEY
-npm install
-npm run dev                  # http://localhost:3000
+git clone https://github.com/arrox/LearnAi.git
+cd LearnAi
+git checkout claude/english-tutor-ai-app-xh1qmu
+npm install -g @anthropic-ai/claude-code   # si aún no lo tienes
+claude auth login                          # una vez
+npm run setup    # instala dependencias, crea .env.local y verifica tu login de Claude Code
+npm run dev      # http://localhost:3000
 ```
 
-Sin API key, el test objetivo funciona igual y ofrece “usar solo el resultado del test”; lecciones, conversación y evaluación de escritura necesitan la IA.
+Con `AI_PROVIDER=claude-code` la app **ignora `ANTHROPIC_API_KEY`** aunque la tengas en el entorno, para que se use tu login de Claude Code (si quieres mantenerla, `CLAUDE_CODE_KEEP_API_KEY=1`).
+
+Tiempos medidos con Claude Code local: corregir una respuesta o un turno de conversación tarda ~3–4 s; la evaluación de nivel ~15 s; generar una lección ~25 s.
+
+Si la IA no está disponible, el test objetivo funciona igual y ofrece “usar solo el resultado del test”.
 
 ## Limitaciones conocidas
 
 - **Calibración del test:** las dificultades de los 36 ítems (`src/lib/itemBank.ts`) son estimaciones de experto, no parámetros calibrados con datos. En simulación (suponiendo que el modelo es correcto) el test solo acierta el nivel exacto ~70% de las veces y queda a ±1 nivel ~100%; la evaluación de escritura/habla complementa eso. Para producción hace falta un banco más grande y recalibrar con respuestas reales.
 - **Sin cuentas ni backend de datos:** el progreso no se sincroniza entre dispositivos.
+- **El backend `claude-code` es solo para uso local y personal.** Usa tu cuenta y tus límites de Claude Code; para que otras personas usen la app, cambia a `AI_PROVIDER=api` con una API key.
 - **Sin límite de uso** en las rutas API: antes de publicar, agrega autenticación y *rate limiting* para controlar el costo.
 - El reconocimiento de voz no está disponible en Firefox.

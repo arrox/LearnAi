@@ -45,6 +45,34 @@ Tiempos medidos con Claude Code local: corregir una respuesta o un turno de conv
 
 Si la IA no está disponible, el test objetivo funciona igual y ofrece “usar solo el resultado del test”.
 
+## Desplegar en Windows (Claude Code local)
+
+Deja LearnAI corriendo en tu PC en `http://localhost:3000`, en segundo plano y con inicio automático al entrar a Windows. Usa tu sesión de Claude Code a través del Claude Agent SDK.
+
+Requisitos: Node 20+ (`winget install OpenJS.NodeJS.LTS`) y Git. Si falta Claude Code, el script lo instala y te pide iniciar sesión.
+
+```powershell
+cd $HOME
+git clone https://github.com/arrox/LearnAi.git
+cd LearnAi
+git checkout claude/english-tutor-ai-app-xh1qmu
+powershell -ExecutionPolicy Bypass -File scripts\windows\deploy.ps1
+```
+
+El script verifica requisitos, detiene la versión anterior, hace `git pull`, instala, compila, arranca el servidor, registra el inicio automático y termina con una llamada real a la IA para confirmar que Claude Code responde.
+
+| Acción | Comando |
+|---|---|
+| Actualizar a la última versión | `powershell -ExecutionPolicy Bypass -File scripts\windows\deploy.ps1` |
+| Detener | `powershell -ExecutionPolicy Bypass -File scripts\windows\stop.ps1` |
+| Iniciar sin recompilar | `powershell -ExecutionPolicy Bypass -File scripts\windows\start.ps1` |
+| Quitar el inicio automático | `powershell -ExecutionPolicy Bypass -File scripts\windows\stop.ps1 -RemoveAutostart` |
+| Otro puerto | agrega `-Port 3005` a cualquiera de los anteriores |
+
+Los registros quedan en `logs\server.log` y `logs\server-error.log`.
+
+El servidor escucha solo en `127.0.0.1`: la app no tiene login y gasta tu cuenta de Claude Code, así que no queda expuesta a la red.
+
 ## Limitaciones conocidas
 
 - **Calibración del test:** las dificultades de los 36 ítems (`src/lib/itemBank.ts`) son estimaciones de experto, no parámetros calibrados con datos. En simulación (suponiendo que el modelo es correcto) el test solo acierta el nivel exacto ~70% de las veces y queda a ±1 nivel ~100%; la evaluación de escritura/habla complementa eso. Para producción hace falta un banco más grande y recalibrar con respuestas reales.
